@@ -10,7 +10,7 @@ using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
 
 namespace Electricity.Content.Block.Entity.Behavior {
-    public sealed class Motor : BEBehaviorMPBase, IElectricConsumer {
+    public class Motor : BEBehaviorMPBase, IElectricConsumer {
         private const float AccelerationFactor = 1.0f;
         private static CompositeShape? CompositeShape;
 
@@ -44,7 +44,7 @@ namespace Electricity.Content.Block.Entity.Behavior {
             _ => throw new Exception()
         };
 
-        public ConsumptionRange ConsumptionRange => new ConsumptionRange(10, 100);
+        public virtual ConsumptionRange ConsumptionRange => new ConsumptionRange(10, 100);
 
         public void Consume(int amount) {
             if (this.powerSetting != amount) {
@@ -150,9 +150,9 @@ namespace Electricity.Content.Block.Entity.Behavior {
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder stringBuilder) {
             base.GetBlockInfo(forPlayer, stringBuilder);
-
-            stringBuilder.AppendLine(StringHelper.Progressbar(this.powerSetting));
-            stringBuilder.AppendLine("└ Consumption: " + this.powerSetting + "/" + 100 + "⚡   ");
+            
+            stringBuilder.AppendLine(StringHelper.Progressbar((this.powerSetting/((float)ConsumptionRange.Max)) *100f));
+            stringBuilder.AppendLine("└ Consumption: " + this.powerSetting + "/" + ConsumptionRange.Max + "⚡   ");
             stringBuilder.AppendLine();
         }
     }

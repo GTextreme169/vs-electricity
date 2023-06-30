@@ -10,10 +10,12 @@ using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
 
 namespace Electricity.Content.Block.Entity.Behavior {
-    public sealed class Generator : BEBehaviorMPBase, IElectricProducer {
+    public class Generator : BEBehaviorMPBase, IElectricProducer {
         private static CompositeShape? CompositeShape;
+        
+        protected virtual float ProduceFactor => 100.0f;
 
-        private int powerSetting;
+        protected int powerSetting;
 
         public Generator(BlockEntity blockEntity) : base(blockEntity) { }
 
@@ -39,7 +41,7 @@ namespace Electricity.Content.Block.Entity.Behavior {
 
         public int Produce() {
             var speed = GameMath.Clamp(Math.Abs(this.network?.Speed ?? 0.0f), 0.0f, 1.0f);
-            var powerSetting = (int)(speed * 100.0f);
+            var powerSetting = (int)(speed * ProduceFactor);
 
             if (powerSetting != this.powerSetting) {
                 this.powerSetting = powerSetting;
@@ -47,7 +49,7 @@ namespace Electricity.Content.Block.Entity.Behavior {
                 this.Blockentity.MarkDirty(true);
             }
 
-            return (int)(speed * 100.0f);
+            return (int)(speed * ProduceFactor);
         }
 
         public override void JoinNetwork(MechanicalNetwork network) {
@@ -64,7 +66,7 @@ namespace Electricity.Content.Block.Entity.Behavior {
 
         public override float GetResistance() {
             return this.powerSetting != 0
-                ? FloatHelper.Remap(this.powerSetting / 100.0f, 0.0f, 1.0f, 0.01f, 0.075f)
+                ? FloatHelper.Remap(this.powerSetting / 100f, 0.0f, 1.0f, 0.01f, 0.075f)
                 : 0.05f;
         }
 
@@ -123,8 +125,8 @@ namespace Electricity.Content.Block.Entity.Behavior {
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder stringBuilder) {
             base.GetBlockInfo(forPlayer, stringBuilder);
 
-            stringBuilder.AppendLine(StringHelper.Progressbar(this.powerSetting));
-            stringBuilder.AppendLine("└ Production: " + this.powerSetting + "/" + 100 + "⚡   ");
+            stringBuilder.AppendLine(StringHelper.Progressbar((this.powerSetting/ProduceFactor)*100.0f));   
+            stringBuilder.AppendLine("└ Production: " + this.powerSetting + "/" + ProduceFactor + "⚡   ");
             stringBuilder.AppendLine();
         }
     }
