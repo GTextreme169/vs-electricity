@@ -1,0 +1,39 @@
+[
+    {
+        "ingredientPattern": "G",
+        "width": 1,
+        "height": 1,
+        "ingredients": {
+            "G": {
+                "type": "block",
+                "code": "electricity:high-torque-generator-stator"
+            }
+        },
+        "output": {
+            "type": "block",
+            "code": "electricity:high-torque-motor-stator"
+        }
+    },
+    {
+        "ingredientPattern": "CCC,CMC,CCC",
+        "width": 3, 
+        "height": 3,
+        "ingredients": {
+            "M": {
+                "type": "block",
+                "code": "electricity:motor-stator",
+                "quantity": 1
+            },
+            "C": {
+                "type": "block",
+                "code": "electricity:cable-*",
+                "quantity": 8
+            }
+        },
+        "output": {
+            "type": "block",
+            "code": "electricity:high-torque-motor-stator",
+            "quantity": 4
+        }
+    }
+]

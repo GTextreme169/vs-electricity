@@ -42,10 +42,12 @@ namespace Electricity {
             api.RegisterBlockClass("Generator", typeof(Generator));
             api.RegisterBlockEntityClass("Generator", typeof(Content.Block.Entity.Generator));
             api.RegisterBlockEntityBehaviorClass("Generator", typeof(Content.Block.Entity.Behavior.Generator));
+            api.RegisterBlockEntityBehaviorClass("HighTorqueGenerator", typeof(Content.Block.Entity.Behavior.HighTorqueGenerator));
 
             api.RegisterBlockClass("Motor", typeof(Motor));
             api.RegisterBlockEntityClass("Motor", typeof(Content.Block.Entity.Motor));
             api.RegisterBlockEntityBehaviorClass("Motor", typeof(Content.Block.Entity.Behavior.Motor));
+            api.RegisterBlockEntityBehaviorClass("HighTorqueMotor", typeof(Content.Block.Entity.Behavior.HighTorqueMotor));
 
             api.RegisterBlockClass("Lamp", typeof(Lamp));
             api.RegisterBlockEntityClass("Lamp", typeof(Content.Block.Entity.Lamp));
