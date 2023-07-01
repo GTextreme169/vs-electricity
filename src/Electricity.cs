@@ -62,6 +62,10 @@ namespace Electricity {
             api.RegisterBlockEntityBehaviorClass("Accumulator", typeof(Content.Block.Entity.Behavior.Accumulator));
 
             api.RegisterBlockEntityBehaviorClass("Electricity", typeof(Content.Block.Entity.Behavior.Electricity));
+            
+            api.RegisterBlockClass("ElectricFirepit", typeof(ElectricFirepit));
+            api.RegisterBlockEntityClass("ElectricFirepit", typeof(Content.Block.Entity.ElectricFirepit));
+            api.RegisterBlockEntityBehaviorClass("ElectricFirepit", typeof(Content.Block.Entity.Behavior.ElectricFirepit));
 
             api.Event.RegisterGameTickListener(this.OnGameTick, 500);
         }

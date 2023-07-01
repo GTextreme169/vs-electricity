@@ -17,6 +17,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Reference Include="cairo-sharp">
+        <HintPath>..\..\Users\Gtext\AppData\Roaming\Vintagestory\Lib\cairo-sharp.dll</HintPath>
+      </Reference>
       <Reference Include="protobuf-net">
         <HintPath>..\..\..\ApplicationData\vintagestory\Lib\protobuf-net.dll</HintPath>
         <Private>False</Private>
