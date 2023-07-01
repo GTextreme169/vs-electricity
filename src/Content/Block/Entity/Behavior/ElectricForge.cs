@@ -7,19 +7,31 @@ namespace Electricity.Content.Block.Entity.Behavior {
     public sealed class ElectricForge : BlockEntityBehavior, IElectricConsumer {
         private int maxTemp;
         private int powerSetting;
+        private bool hasItems = false;
 
         public ElectricForge(BlockEntity blockEntity) : base(blockEntity) { }
 
-        public ConsumptionRange ConsumptionRange => new ConsumptionRange(10, 100);
+        public ConsumptionRange ConsumptionRange => hasItems ? new ConsumptionRange(10, 100) : new ConsumptionRange(0, 0);
 
-        public void Consume(int amount) {
+        public void Consume(int amount)
+        {
+            Entity.ElectricForge? entity = null;
+            if (this.Blockentity is Entity.ElectricForge temp)
+            {
+                entity = temp;
+                hasItems = entity?.Contents?.StackSize > 0;
+            }
+            if (!hasItems) {
+                amount = 0;
+            }
             if (this.powerSetting != amount) {
                 this.powerSetting = amount;
                 this.maxTemp = (amount * 1100) / 100;
 
-                if (this.Blockentity is Entity.ElectricForge entity) {
+                if (entity != null)
+                {
                     entity.MaxTemp = this.maxTemp;
-                    entity.IsBurning = amount > 0;
+                    entity.IsBurning = amount > 0 && this.hasItems;
                 }
             }
         }
