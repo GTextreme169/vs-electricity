@@ -99,16 +99,29 @@ namespace Electricity.Content.Block.Entity.Behavior {
 
         public override void WasPlaced(BlockFacing connectedOnFacing) { }
 
+        private bool ValidateCompositeShape(ICoreAPI api)
+        {
+            if (CompositeShape != null) return true;
+            var location = this.Block.CodeWithVariant("type", "rotor");
+            if (location == null) 
+                return false;
+
+            var block =  api.World.BlockAccessor?.GetBlock(location);
+            if (block == null) 
+                return false;
+                
+            CompositeShape = block.Shape?.Clone();
+            return CompositeShape != null;
+        }
+
         protected override CompositeShape? GetShape() {
             if (this.Api is { } api && this.Blockentity is Entity.Motor entity && entity.Facing != Facing.None) {
                 var direction = this.OutFacingForNetworkDiscovery;
 
-                if (CompositeShape == null) {
-                    var location = this.Block.CodeWithVariant("type", "rotor");
-                    CompositeShape = api.World.BlockAccessor.GetBlock(location).Shape.Clone();
+                if (!ValidateCompositeShape(api)) {
+                    return null;
                 }
-
-                var shape = CompositeShape.Clone();
+                var shape = CompositeShape!.Clone();
 
                 if (direction == BlockFacing.NORTH) {
                     shape.rotateY = 0;
