@@ -216,33 +216,56 @@ namespace Electricity {
 
                 network.Production = production;
                 network.Consumption = production - availableEnergy;
+                StoreOverflowInAccumulators(network, accumulators);
+            }
+        }
 
-                while ((network.Overflow = network.Production - network.Consumption) > 0) {
-                    accumulators.Clear();
+        private static void StoreOverflowInAccumulators(Network network, List<IElectricAccumulator> accumulators)
+        {
+            network.Overflow = network.Production - network.Consumption;
+            if (network.Overflow <= 0)
+                return;
 
-                    foreach (var accumulator in network.Accumulators) {
-                        if (accumulator.GetMaxCapacity() - accumulator.GetCapacity() > 0) {
-                            accumulators.Add(accumulator);
-                        }
-                    }
+            accumulators.Clear();
 
-                    if (accumulators.Count == 0) {
-                        break;
-                    }
-
-                    var giveableEnergy = network.Overflow / accumulators.Count;
-
-                    if (giveableEnergy == 0) {
-                        break;
-                    }
-
-                    foreach (var accumulator in accumulators) {
-                        var energy = Math.Min(giveableEnergy, accumulator.GetMaxCapacity() - accumulator.GetCapacity());
-
-                        accumulator.Store(energy);
-                        network.Consumption += energy;
-                    }
+            foreach (var accumulator in network.Accumulators)
+            {
+                if (accumulator.GetMaxCapacity() - accumulator.GetCapacity() > 0)
+                {
+                    accumulators.Add(accumulator);
                 }
+            }
+
+            if (accumulators.Count == 0) {
+                return;
+            }
+
+            var giveableEnergy = network.Overflow / accumulators.Count;
+            var remainder = network.Overflow % accumulators.Count;
+
+            if (giveableEnergy == 0) {
+                return;
+            }
+
+            foreach (var accumulator in accumulators)
+            {
+                int availableCapacity = accumulator.GetMaxCapacity() - accumulator.GetCapacity();
+                int energy = giveableEnergy;
+
+                if (availableCapacity < energy)
+                {
+                    energy = availableCapacity;
+                }
+                else
+                    // if there the remainder > 0 and the accumulator is not full yet we store the remainder in this accumulator
+                if (remainder > 0 && energy < availableCapacity)
+                {
+                    energy++;
+                    remainder--;
+                }
+
+                accumulator.Store(energy);
+                network.Consumption += energy;
             }
         }
 
