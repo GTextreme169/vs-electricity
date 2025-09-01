@@ -22,7 +22,6 @@ using Vintagestory.Client.NoObf;
 
 namespace Electricity {
     public class Electricity : ModSystem {
-        private readonly List<Consumer> consumers = new();
         private readonly HashSet<Network> networks = new();
         private readonly Dictionary<BlockPos, NetworkPart> parts = new();
 
@@ -102,113 +101,174 @@ namespace Electricity {
         }
 
         private void OnGameTick(float _) {
-            var accumulators = new List<IElectricAccumulator>();
+            foreach (var network in this.networks)
+            {
+                ComputeNetworkTick(network);
+            }
+        }
 
-            foreach (var network in this.networks) {
-                this.consumers.Clear();
+        private void ComputeNetworkTick(Network network)
+        {
+            List<Consumer> consumers = new();
+            List<IElectricAccumulator> accumulators = new();
+            consumers.Clear();
 
-                var production = network.Producers.Sum(producer => producer.Produce());
+            var production = network.Producers.Sum(producer => producer.Produce());
 
-                var totalRequiredEnergy = 0;
+            var totalRequiredEnergy = 0;
 
-                foreach (var consumer in network.Consumers.Select(electricConsumer => new Consumer(electricConsumer))) {
-                    totalRequiredEnergy += consumer.Consumption.Max;
-                    this.consumers.Add(consumer);
+            foreach (var consumer in network.Consumers.Select(electricConsumer => new Consumer(electricConsumer))) {
+                totalRequiredEnergy += consumer.Consumption.Max;
+                consumers.Add(consumer);
+            }
+            
+            // 3 Cases:
+            // 1. Production is greater than or equal to total required energy
+            // 2. Production is less than total required energy
+            // 3. Production is less than total required energy and accumulators are available
+            
+            // Case 1: Production is greater than or equal to total required energy
+            if (production >= totalRequiredEnergy) {
+                foreach (var consumer in consumers) {
+                    consumer.GivenEnergy = consumer.Consumption.Max;
                 }
-
-                if (production < totalRequiredEnergy) {
-                    do {
-                        accumulators.Clear();
-                        accumulators.AddRange(network.Accumulators.Where(accumulator => accumulator.GetCapacity() > 0));
-
-                        if (accumulators.Count > 0) {
-                            var rest = (totalRequiredEnergy - production) / accumulators.Count;
-
-                            if (rest == 0) {
-                                break;
-                            }
-
-                            foreach (var accumulator in accumulators) {
-                                var capacity = Math.Min(accumulator.GetCapacity(), rest);
-
-                                if (capacity > 0) {
-                                    production += capacity;
-                                    accumulator.Release(capacity);
-                                }
-                            }
-                        }
-                    } while (accumulators.Count > 0 && totalRequiredEnergy - production > 0);
+                
+                network.Production = production;
+                network.Consumption = totalRequiredEnergy;
+                
+                StoreOverflowInAccumulators(network);
+            }
+            else if (production < totalRequiredEnergy)
+            {
+                int accumulatorEnergy = 0;
+                foreach (var accumulator in network.Accumulators)
+                {
+                    accumulatorEnergy += accumulator.GetCapacity();
                 }
-
-                var availableEnergy = production;
-
-                var activeConsumers = this.consumers
-                    .OrderBy(consumer => consumer.Consumption.Min)
-                    .GroupBy(consumer => consumer.Consumption.Min)
-                    .Where(
-                        grouping => {
-                            var range = grouping.First().Consumption;
-                            var totalMinConsumption = range.Min * grouping.Count();
-
-                            if (totalMinConsumption <= availableEnergy) {
-                                availableEnergy -= totalMinConsumption;
-
-                                foreach (var consumer in grouping) {
-                                    consumer.GivenEnergy += range.Min;
-                                }
-
-                                return true;
-                            }
-
-                            return false;
-                        }
-                    )
-                    .SelectMany(grouping => grouping)
-                    .ToArray();
-
-                var requiredEnergy = int.MaxValue;
-
-                while (availableEnergy > 0 && requiredEnergy != 0) {
-                    requiredEnergy = 0;
-
-                    var dissatisfiedConsumers = activeConsumers
-                        .Where(consumer => consumer.Consumption.Max > consumer.GivenEnergy)
-                        .ToArray();
-
-                    var numberOfDissatisfiedConsumers = dissatisfiedConsumers.Count();
-
-                    if (numberOfDissatisfiedConsumers == 0) {
+                
+                // Case 2: Production is less than total required energy
+                int delta = totalRequiredEnergy - production;
+                do
+                {
+                    var accumulatorsList = network.Accumulators.OrderByDescending(x => x.GetCapacity())
+                        .Where(x => x.GetCapacity() > 0).ToList();
+                    if (accumulatorsList.Count == 0)
                         break;
+                    // Aim to have an even distribution of energy to all accumulators
+                    int energyToDistribute = delta / accumulatorsList.Count;
+                    foreach (var accumulator in accumulatorsList)
+                    {
+                        if (delta == 0)
+                            break;
+                                
+                        int tempEnergy = Math.Min(energyToDistribute, delta);
+                        accumulator.Release(tempEnergy);
+                        delta -= tempEnergy;
                     }
+                } while (delta > 0 && accumulators.Count > 0);
+                        
+                foreach (var consumer in consumers)
+                {
+                    consumer.GivenEnergy = consumer.Consumption.Max;
+                }
+                        
+                network.Production = totalRequiredEnergy;
+                network.Consumption = totalRequiredEnergy;
+                
+            }
 
-                    var distributableEnergy = Math.Max(1, availableEnergy / numberOfDissatisfiedConsumers);
+            if (production < totalRequiredEnergy) {
+                do {
+                    accumulators.Clear();
+                    accumulators.AddRange(network.Accumulators.Where(accumulator => accumulator.GetCapacity() > 0));
 
-                    foreach (var consumer in dissatisfiedConsumers) {
-                        if (availableEnergy == 0) {
+                    if (accumulators.Count > 0) {
+                        var rest = (totalRequiredEnergy - production) / accumulators.Count;
+
+                        if (rest == 0) {
                             break;
                         }
 
-                        var giveableEnergy = Math.Min(
-                            distributableEnergy,
-                            consumer.Consumption.Max - consumer.GivenEnergy
-                        );
+                        foreach (var accumulator in accumulators) {
+                            var capacity = Math.Min(accumulator.GetCapacity(), rest);
 
-                        availableEnergy -= giveableEnergy;
-                        consumer.GivenEnergy += giveableEnergy;
-
-                        requiredEnergy += consumer.Consumption.Max - consumer.GivenEnergy;
+                            if (capacity > 0) {
+                                production += capacity;
+                                accumulator.Release(capacity);
+                            }
+                        }
                     }
-                }
-
-                foreach (var consumer in this.consumers) {
-                    consumer.ElectricConsumer.Consume(consumer.GivenEnergy);
-                }
-
-                network.Production = production;
-                network.Consumption = production - availableEnergy;
-
-                StoreOverflowInAccumulators(network);
+                } while (accumulators.Count > 0 && totalRequiredEnergy - production > 0);
             }
+
+            var availableEnergy = production;
+
+            var activeConsumers = consumers
+                .OrderBy(consumer => consumer.Consumption.Min)
+                .GroupBy(consumer => consumer.Consumption.Min)
+                .Where(
+                    grouping => {
+                        var range = grouping.First().Consumption;
+                        var totalMinConsumption = range.Min * grouping.Count();
+
+                        if (totalMinConsumption <= availableEnergy) {
+                            availableEnergy -= totalMinConsumption;
+
+                            foreach (var consumer in grouping) {
+                                consumer.GivenEnergy += range.Min;
+                            }
+
+                            return true;
+                        }
+
+                        return false;
+                    }
+                )
+                .SelectMany(grouping => grouping)
+                .ToArray();
+
+            var requiredEnergy = int.MaxValue;
+
+            while (availableEnergy > 0 && requiredEnergy != 0) {
+                requiredEnergy = 0;
+
+                var dissatisfiedConsumers = activeConsumers
+                    .Where(consumer => consumer.Consumption.Max > consumer.GivenEnergy)
+                    .ToArray();
+
+                var numberOfDissatisfiedConsumers = dissatisfiedConsumers.Count();
+
+                if (numberOfDissatisfiedConsumers == 0) {
+                    break;
+                }
+
+                var distributableEnergy = Math.Max(1, availableEnergy / numberOfDissatisfiedConsumers);
+
+                foreach (var consumer in dissatisfiedConsumers) {
+                    if (availableEnergy == 0) {
+                        break;
+                    }
+
+                    var giveableEnergy = Math.Min(
+                        distributableEnergy,
+                        consumer.Consumption.Max - consumer.GivenEnergy
+                    );
+
+                    availableEnergy -= giveableEnergy;
+                    consumer.GivenEnergy += giveableEnergy;
+
+                    requiredEnergy += consumer.Consumption.Max - consumer.GivenEnergy;
+                }
+            }
+
+            foreach (var consumer in consumers) {
+                consumer.ElectricConsumer.Consume(consumer.GivenEnergy);
+            }
+
+            network.Production = production;
+            network.Consumption = production - availableEnergy;
+
+            StoreOverflowInAccumulators(network);
         }
 
         private static void StoreOverflowInAccumulators(Network network) {
