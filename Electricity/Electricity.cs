@@ -8,13 +8,13 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
 
-[assembly: ModDependency("game", "1.19.3")]
+[assembly: ModDependency("game", "1.21.0")]
 [assembly: ModInfo(
     "Electricity",
     "electricity",
     Website = "https://github.com/anluin/electricity",
     Description = "Brings electricity into the game!",
-    Version = "0.0.11",
+    Version = "0.0.13",
     Authors = new[] {
         "Anluin"
     }
